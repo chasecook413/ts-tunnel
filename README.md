@@ -8,12 +8,17 @@ Make sure you have [Typescript](https://www.typescriptlang.org/download) install
 
 ### Building:
 
-    tsc lib/server/index.js
-    tsc lib/client/index.js
+    npm run compile
 
 ### Running:
-    node lib/server/index.js
-    node lib/client/index.js
+
+Server-side of tunnel:
+
+    npm run server
+
+Client-side of tunnel:
+
+    npm run client
 
 ### Testing:
 

@@ -42,7 +42,7 @@ export class WssClient {
                 return;
             }
 
-            if (self.proxyServer.listening) {
+            if (self.proxyServer.listening()) {
                 // self.logger.info(`proxy server was listening`);
                 let openSocket = null;
 
@@ -83,7 +83,7 @@ export class WssClient {
         });
     }
 
-    packData(message: Object, serverToClientData: Uint8Array) {
+    packData(message: Object, serverToClientData: Uint8Array | null) {
         const binaryMessage = Buffer.from(JSON.stringify(message));
         const paddedLength = String(binaryMessage.byteLength).padStart(4, '0');
         const objectLength = Buffer.from(paddedLength);

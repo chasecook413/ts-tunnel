@@ -19,7 +19,7 @@ export class API {
 
     handleRequest(req: http.IncomingMessage, res: http.ServerResponse) {
         this.logger.info(`New request to ${req.url}`);
-        const fn = this.routes.get(req.url);
+        const fn = this.routes.get(<string>req.url);
         if (fn) {
             return fn(req, res);
         } else {

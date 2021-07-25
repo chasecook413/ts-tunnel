@@ -5,13 +5,13 @@ import * as net from 'net';
 import { v4 as uuid } from 'uuid';
 
 export class WssServer {
-    wsServer: Server;
+    wsServer: Server | undefined;
     logger: winston.Logger;
     serverPort: number;
     wsServerPort: number;
     hasClientConnection: boolean;
-    tcpListener: net.Server;
-    tunnelClientWebSocket: WebSocket;
+    tcpListener: net.Server | undefined;
+    tunnelClientWebSocket: WebSocket | undefined;
     openSockets: Map<string, net.Socket>;
     constructor(logger: winston.Logger, serverPort: number, wsServerPort: number) {
         this.serverPort = serverPort;
@@ -31,7 +31,7 @@ export class WssServer {
         const self = this;
         if (!self.tunnelClientWebSocket) {
             // self.logger.info(`No client yet, rejecting data`);
-            socket.destroy(null);
+            socket.destroy();
             return;
         }
 
@@ -41,7 +41,9 @@ export class WssServer {
             // self.logger.info(`Received data on socket ${id}`);
             if (self.wsServer) {
                 data = self.packData({id: id, type: 'data'}, data);
-                self.tunnelClientWebSocket.send(data);
+                if (self.tunnelClientWebSocket) {
+                    self.tunnelClientWebSocket.send(data);
+                }
             }
         });
 
@@ -57,7 +59,7 @@ export class WssServer {
     }
 
     startSocksServer() {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             const self = this;
             self.tcpListener = net.createServer((socket) => {
                 self.onSocket(socket);
@@ -91,7 +93,9 @@ export class WssServer {
         this.wsServer.on('connection', (ws, req) => {
             if (self.hasClientConnection) {
                 self.logger.info(`New Connection from ${ws.url}, destroying`);
-                return self.tunnelClientWebSocket.close();
+                if (self.tunnelClientWebSocket) {
+                    return self.tunnelClientWebSocket.close();
+                }
             }
 
             self.tunnelClientWebSocket = ws;
@@ -106,29 +110,39 @@ export class WssServer {
                 socket = self.openSockets.get(parsedMessage.id);
                 if (!socket) {
                     let dataToSend = this.packData({id: parsedMessage.id, type: 'close'}, null);
-                    return self.tunnelClientWebSocket.send(dataToSend);
+                    if (self.tunnelClientWebSocket) {
+                        return self.tunnelClientWebSocket.send(dataToSend);
+                    }
                 }
 
                 switch (parsedMessage.type) {
                     case 'data':
+                        // @ts-ignore
                         if (!socket.destroyed) {
+                            // @ts-ignore
                             socket.write(parsedMessage.data);
                         }
                         break;
                     case 'close':
                         if (parsedMessage.data) {
+                            // @ts-ignore
                             if (!socket.destroyed) {
+                                // @ts-ignore
                                 socket.end(parsedMessage.data);
                             }
                         } else {
+                            // @ts-ignore
                             if (!socket.destroyed) {
+                                // @ts-ignore
                                 socket.end();
                             }
                         }
                         break;
                     case 'error':
                         this.logger.info(`Error for ${parsedMessage.id}`);
+                        // @ts-ignore
                         if (!socket.destroyed) {
+                            // @ts-ignore
                             socket.end();
                         }
                         break;
@@ -137,7 +151,7 @@ export class WssServer {
         });
     }
 
-    packData(message: Object, serverToClientData: Uint8Array) {
+    packData(message: Object, serverToClientData: Uint8Array | null) {
         const binaryMessage = Buffer.from(JSON.stringify(message));
         const paddedLength = String(binaryMessage.byteLength).padStart(4, '0');
         const objectLength = Buffer.from(paddedLength);

@@ -14,6 +14,7 @@ export class ProxyServer {
         this.api = api.createApi(this.logger, this);
         const self = this;
 
+        // @ts-ignore
         const proxy = new httpProxy.createProxyServer({
             ws: true,
             secure: true,
@@ -27,13 +28,13 @@ export class ProxyServer {
             // self.logger.info(`Incoming request for ${req.url}`);
             let url;
 
-            if (/^\/admin*/.test(req.url)) {
+            if (/^\/admin*/.test(<string>req.url)) {
                 self.logger.info(`Request came in for admin server`);
                 return this.api.handleRequest(req, res);
             }
 
             try {
-                url = new URL(req.url);
+                url = new URL(<string>req.url);
             } catch (urlException) {
                 self.logger.error(`Error retrieving URL for request`);
                 res.write(JSON.stringify({
@@ -85,7 +86,7 @@ export class ProxyServer {
                 self.logger.error(`Error on proxy socket: ${err.message}`);
             });
 
-            clientSocket.on('data', (data) => {
+            clientSocket.on('data', (data: string | Uint8Array) => {
                 // self.logger.info(`Got more client data`);
                 if (!proxySocket.destroyed) {
                     proxySocket.write(data);
@@ -99,7 +100,7 @@ export class ProxyServer {
                 }
             });
 
-            clientSocket.on('error', (err) => {
+            clientSocket.on('error', (err: Error) => {
                 self.logger.info(`Error on proxy socket: ${err.message}`);
             });
         });
@@ -111,7 +112,7 @@ export class ProxyServer {
         this.server.listen(port, '127.0.0.1');
     }
 
-    parseConnectString(connectString, defaultPort) {
+    parseConnectString(connectString: string, defaultPort: number) {
         let host = connectString;
         let port = defaultPort;
 
@@ -119,14 +120,14 @@ export class ProxyServer {
         if (result != null) {
             host = result[1];
             if (result[2] != null) {
-                port = result[3];
+                port = parseInt(result[3]);
             }
         }
 
         return { host, port };
     }
 
-    getConnectionEstablished(httpVersion) {
+    getConnectionEstablished(httpVersion: string) {
         return "HTTP/" + httpVersion + " 200 Connection established\r\n\r\n";
     }
 
